@@ -22,18 +22,31 @@ use Illuminate\Support\Facades\Auth;
  */
 class Rejection extends Model
 {
-    protected $fillable = [
+     protected $fillable = [
         'tenant_id',
+        'type',
+        'penalty',
+        'carrier_controllable',
+        'dispute_status',
+        // Old fields - will be removed after migration
         'date',
         'rejection_type',
         'driver_name',
         'rejection_category',
-        'penalty',
         'reason_code_id',
         'disputed',
-        'driver_controllable'
+        'driver_controllable',
     ];
 
+     /**
+      * The attributes that should be cast to native types.
+      */
+     protected $casts = [
+        'carrier_controllable' => 'boolean',
+        'date' => 'datetime',  // ← Change from 'datetime' to 'date'
+        'disputed' => 'boolean',
+        'driver_controllable' => 'boolean',
+    ];
     /**
      * Get the rejection reason code associated with the rejection.
      *
@@ -53,6 +66,81 @@ class Rejection extends Model
     {
         return $this->belongsTo(Tenant::class);
     }
+    /**
+     * Get the advanced rejection details.
+     */
+    public function advancedDetail()
+    {
+        return $this->hasOne(AdvancedRejectionDetail::class);
+    }
+
+    /**
+     * Get the block rejection details.
+     */
+    public function blockDetail()
+    {
+        return $this->hasOne(BlockRejectionDetail::class);
+    }
+
+    /**
+     * Get the load rejection details.
+     */
+    public function loadDetail()
+    {
+        return $this->hasOne(LoadRejectionDetail::class);
+    }
+
+    /**
+     * Get the detail based on type (polymorphic helper).
+     */
+    public function getDetailAttribute()
+    {
+        return match($this->type) {
+            'advanced' => $this->advancedDetail,
+            'block' => $this->blockDetail,
+            'load' => $this->loadDetail,
+            default => null,
+        };
+    }
+
+    /**
+     * Scope to filter by tenant (multi-tenancy).
+     */
+    public function scopeForTenant($query, $tenantId)
+    {
+        return $query->where('tenant_id', $tenantId);
+    }
+
+    /**
+     * Check if dispute affects company score.
+     */
+    public function getAffectsCompanyScoreAttribute(): bool
+    {
+        // If dispute is won, it doesn't affect company score
+        if ($this->dispute_status === 'won') {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Check if affects driver score.
+     */
+    public function getAffectsDriverScoreAttribute(): bool
+    {
+        // If dispute is won AND not carrier controllable, exclude from driver score
+        if ($this->dispute_status === 'won' && !$this->carrier_controllable) {
+            return false;
+        }
+
+        return true;
+    }
+
+    protected function serializeDate(\DateTimeInterface $date)
+{
+    return $date->format('Y-m-d');
+}
 
     /**
      * Boot the model and apply the TenantScope if a user is authenticated.

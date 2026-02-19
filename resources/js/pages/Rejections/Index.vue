@@ -163,6 +163,40 @@
             <div class="flex items-center gap-2">
               <CardTitle class="text-lg md:text-xl lg:text-2xl">Filters</CardTitle>
 
+  <div class="ml-4 flex items-center gap-2 border-l pl-4">
+  <span class="text-sm text-muted-foreground">View:</span>
+  <div class="flex rounded-md border p-1 bg-muted/20">
+    <Button
+      @click="setViewType('rejections')"
+      variant="ghost"
+      size="sm"
+      :class="[
+        'px-3 py-1 text-xs rounded-md transition-all',
+        filters.viewType === 'rejections' 
+          ? 'bg-destructive text-destructive-foreground shadow-sm' 
+          : 'hover:bg-muted'
+      ]"
+    >
+      <Icon name="x-circle" class="mr-1 h-3 w-3" />
+      Rejections
+    </Button>
+    <Button
+      @click="setViewType('acceptance')"
+      variant="ghost"
+      size="sm"
+      :class="[
+        'px-3 py-1 text-xs rounded-md transition-all',
+        filters.viewType === 'acceptance' 
+          ? 'bg-primary text-primary-foreground shadow-sm' 
+          : 'hover:bg-muted'
+      ]"
+    >
+      <Icon name="check-circle" class="mr-1 h-3 w-3" />
+     Accepted
+    </Button>
+  </div>
+</div>
+
               <div
                 v-if="!showFilters && hasActiveFilters"
                 class="ml-4 flex flex-wrap gap-2"
@@ -191,25 +225,28 @@
                 >
                   Category: {{ getRejectionCategoryLabel(filters.rejectionCategory) }}
                 </div>
-                <div
-                  v-if="filters.disputed"
-                  class="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold"
-                >
-                  Disputed: {{ filters.disputed === "true" ? "Yes" : "No" }}
-                </div>
-                <div
-                  v-if="filters.driverControllable"
-                  class="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold"
-                >
-                  Driver Controllable:
-                  {{
-                    filters.driverControllable === "true"
-                      ? "Yes"
-                      : filters.driverControllable === "false"
-                      ? "No"
-                      : "N/A"
-                  }}
-                </div>
+            <div
+  v-if="filters.disputeStatus"
+  class="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold"
+>
+  Dispute: 
+  <span class="capitalize ml-1">{{ filters.disputeStatus }}</span>
+</div>
+<div
+  v-if="filters.controllable && filters.controllable.length > 0"
+  class="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold"
+>
+  Controllable: 
+  <span class="ml-1">
+    {{ filters.controllable.map(c => {
+      if (c === 'carrier') return 'Carrier';
+      if (c === 'driver') return 'Driver';
+      if (c === 'none') return 'Not';
+      if (c === 'both') return 'Both';
+      return c;
+    }).join(', ') }}
+  </span>
+</div>
               </div>
             </div>
 
@@ -249,6 +286,8 @@
                   <option value="">All Types</option>
                   <option value="block">Block</option>
                   <option value="load">Load</option>
+                  <option value="advanced">Advanced</option>
+
                 </select>
               </div>
 
@@ -281,7 +320,6 @@
                   <template
                     v-if="!filters.rejectionType || filters.rejectionType === 'block'"
                   >
-                    <option value="advanced_rejection">Advanced Rejection</option>
                     <option value="more_than_24">More than 24 hours</option>
                     <option value="within_24">Within 24 hours</option>
                   </template>
@@ -297,32 +335,106 @@
             </div>
 
             <div class="grid w-full grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <Label for="disputed">Disputed</Label>
-                <select
-                  id="disputed"
-                  v-model="filters.disputed"
-                  class="flex h-10 w-full items-center rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <option value="">All</option>
-                  <option value="true">Yes</option>
-                  <option value="false">No</option>
-                </select>
-              </div>
+             <div>
+  <Label for="disputeStatus">Dispute Status</Label>
+  <select
+    id="disputeStatus"
+    v-model="filters.disputeStatus"
+    class="flex h-10 w-full items-center rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+  >
+    <option value="">All</option>
+    <option value="none">None</option>
+    <option value="pending">Pending</option>
+    <option value="won">Won</option>
+    <option value="lost">Lost</option>
+  </select>
+</div>
 
-              <div>
-                <Label for="driverControllable">Driver Controllable</Label>
-                <select
-                  id="driverControllable"
-                  v-model="filters.driverControllable"
-                  class="flex h-10 w-full items-center rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <option value="">All</option>
-                  <option value="true">Yes</option>
-                  <option value="false">No</option>
-                  <option value="NA">N/A</option>
-                </select>
-              </div>
+        <div>
+  <Label>Controllable</Label>
+  <div class="relative">
+    <!-- Multi-select dropdown button -->
+    <button
+      type="button"
+      @click="toggleControllableDropdown"
+      class="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+    >
+      <span class="truncate">
+        {{ getControllableDisplayText }}
+      </span>
+      <Icon name="chevron-down" class="h-4 w-4 opacity-50" />
+    </button>
+    
+    <!-- Dropdown menu with checkboxes -->
+    <div
+      v-if="showControllableDropdown"
+      class="absolute z-50 mt-1 w-full rounded-md border border-input bg-background shadow-lg"
+    >
+      <div class="p-2 space-y-2">
+        <label class="flex items-center space-x-2 px-2 py-1 hover:bg-muted/50 rounded cursor-pointer">
+          <input
+            type="checkbox"
+            v-model="filters.controllable"
+            value="carrier"
+            class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+          />
+          <span class="text-sm">Carrier Controllable</span>
+        </label>
+        
+        <label class="flex items-center space-x-2 px-2 py-1 hover:bg-muted/50 rounded cursor-pointer">
+          <input
+            type="checkbox"
+            v-model="filters.controllable"
+            value="driver"
+            class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+          />
+          <span class="text-sm">Driver Controllable</span>
+        </label>
+        
+        <label class="flex items-center space-x-2 px-2 py-1 hover:bg-muted/50 rounded cursor-pointer">
+          <input
+            type="checkbox"
+            v-model="filters.controllable"
+            value="none"
+            class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+          />
+          <span class="text-sm">Not Controllable</span>
+        </label>
+        
+        <label class="flex items-center space-x-2 px-2 py-1 hover:bg-muted/50 rounded cursor-pointer">
+          <input
+            type="checkbox"
+            v-model="filters.controllable"
+            value="both"
+            class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+          />
+          <span class="text-sm">Both</span>
+        </label>
+      </div>
+      
+      <div class="border-t p-2 flex justify-between">
+        <Button 
+          size="sm" 
+          variant="ghost" 
+          @click="clearControllable"
+          class="text-xs"
+        >
+          Clear
+        </Button>
+        <Button 
+          size="sm" 
+          @click="showControllableDropdown = false"
+          class="text-xs"
+        >
+          Apply
+        </Button>
+      </div>
+    </div>
+  </div>
+  <p class="text-xs text-muted-foreground mt-1">
+    Selected: {{ filters.controllable.length }} options
+  </p>
+</div>
             </div>
 
             <div class="flex justify-end space-x-2">
@@ -353,244 +465,267 @@
       <!-- Rejections Table -->
       <Card class="mx-auto max-w-[95vw] overflow-x-auto md:max-w-[64vw] lg:max-w-full">
         <CardContent class="p-0">
-          <div class="overflow-x-auto">
-            <Table class="relative h-[500px] overflow-auto">
-              <TableHeader>
-                <TableRow
-                  class="sticky top-0 z-10 border-b bg-background hover:bg-background"
-                >
-                  <TableHead
-                    class="w-[50px]"
-                    v-if="permissionNames.includes('acceptance.delete')"
-                  >
-                    <div class="flex items-center justify-center">
-                      <input
-                        type="checkbox"
-                        @change="toggleSelectAll"
-                        :checked="isAllSelected"
-                        class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                      />
-                    </div>
-                  </TableHead>
-
-                  <TableHead v-if="isSuperAdmin">Company Name</TableHead>
-
-                  <TableHead
-                    v-for="col in tableColumns"
-                    :key="col"
-                    class="cursor-pointer"
-                    @click="sortBy(col)"
-                  >
-                    <div class="flex items-center">
-                      <div v-if="col == 'rejection_category'">Rejection From Start</div>
-                      <div v-else>
-                        {{
-                          col
-                            .replace(/_/g, " ")
-                            .split(" ")
-                            .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-                            .join(" ")
-                        }}
-                      </div>
-
-                      <div v-if="sortColumn === col" class="ml-2">
-                        <svg
-                          v-if="sortDirection === 'asc'"
-                          class="h-4 w-4"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="2"
-                        >
-                          <path d="M8 15l4-4 4 4" />
-                        </svg>
-                        <svg
-                          v-else
-                          class="h-4 w-4"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="2"
-                        >
-                          <path d="M16 9l-4 4-4-4" />
-                        </svg>
-                      </div>
-
-                      <div v-else class="ml-2 opacity-50">
-                        <svg
-                          class="h-4 w-4"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="2"
-                        >
-                          <path d="M8 10l4-4 4 4" />
-                          <path d="M16 14l-4 4-4-4" />
-                        </svg>
-                      </div>
-                    </div>
-                  </TableHead>
-
-                  <TableHead
-                    v-if="
-                      permissionNames.includes('acceptance.update') ||
-                      permissionNames.includes('acceptance.delete')
-                    "
-                  >
-                    Actions
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-
-              <TableBody>
-                <TableRow v-if="filteredRejections.length === 0">
-                  <TableCell
-                    :colspan="
-                      isSuperAdmin ? tableColumns.length + 3 : tableColumns.length + 2
-                    "
-                    class="py-8 text-center text-primary font-medium"
-                  >
-                    No rejections found matching your criteria
-                  </TableCell>
-                </TableRow>
-
-                <TableRow
-                  v-for="rejection in filteredRejections"
-                  :key="rejection.id"
-                  class="hover:bg-muted/50"
-                >
-                  <TableCell
-                    class="text-center"
-                    v-if="permissionNames.includes('acceptance.delete')"
-                  >
-                    <input
-                      type="checkbox"
-                      :value="rejection.id"
-                      v-model="selectedRejections"
-                      class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                    />
-                  </TableCell>
-
-                  <TableCell v-if="isSuperAdmin">{{
-                    rejection.tenant?.name || "—"
-                  }}</TableCell>
-
-                  <TableCell
-                    v-for="col in tableColumns"
-                    :key="col"
-                    class="whitespace-nowrap"
-                  >
-                    <template v-if="col === 'date'">
-                      {{ formatDate(rejection[col]) }}
-                    </template>
-
-                    <template v-else-if="col === 'rejection_type'">
-                      <span class="capitalize">{{ rejection[col] }}</span>
-                    </template>
-
-                    <template v-else-if="col === 'reason_code'">
-                      {{ rejection.reason_code?.reason_code || "—" }}
-                      <span
-                        v-if="rejection.reason_code?.deleted_at"
-                        class="ml-1 text-xs text-red-500"
-                      >
-                        (Deleted)
-                      </span>
-                    </template>
-
-                    <template v-else-if="col === 'disputed'">
-                      {{ rejection[col] ? "Yes" : "No" }}
-                    </template>
-
-                    <template v-else-if="col === 'driver_controllable'">
-                      {{
-                        rejection[col] === null ? "N/A" : rejection[col] ? "Yes" : "No"
-                      }}
-                    </template>
-
-                    <template v-else-if="col === 'rejection_category'">
-                      {{ getRejectionCategoryLabel(rejection[col]) }}
-                    </template>
-
-                    <template v-else>
-                      {{ rejection[col] }}
-                    </template>
-                  </TableCell>
-
-                  <TableCell
-                    v-if="
-                      permissionNames.includes('acceptance.delete') ||
-                      permissionNames.includes('acceptance.update')
-                    "
-                  >
-                    <div class="flex space-x-2">
-                      <Button
-                        size="sm"
-                        @click="openForm(rejection)"
-                        variant="warning"
-                        v-if="permissionNames.includes('acceptance.update')"
-                      >
-                        <Icon name="pencil" class="mr-1 h-4 w-4" />
-                        Edit
-                      </Button>
-
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        @click="confirmDeleteRejection(rejection.id)"
-                        v-if="permissionNames.includes('acceptance.delete')"
-                      >
-                        <Icon name="trash" class="mr-1 h-4 w-4" />
-                        Delete
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          </div>
-
-          <!-- paginate -->
-          <div class="border-t bg-muted/20 px-4 py-3" v-if="rejections.links">
-            <div class="flex flex-col items-center justify-between gap-2 sm:flex-row">
-              <div class="flex items-center gap-4 text-sm text-muted-foreground">
-                <span
-                  >Showing {{ filteredRejections.length }} of
-                  {{ rejections.data.length }} entries</span
-                >
-
-                <div
-                  class="flex w-full flex-col items-center gap-2 sm:w-auto sm:flex-row sm:gap-4"
-                >
-                  <span class="text-sm">Show:</span>
-                  <select
-                    v-model="perPage"
-                    @change="changePerPage"
-                    class="h-8 rounded-md border border-input bg-background px-2 py-1 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                  >
-                    <option v-for="size in [10, 25, 50, 100]" :key="size" :value="size">
-                      {{ size }}
-                    </option>
-                  </select>
-                </div>
+         <div class="overflow-x-auto">
+      <Table class="relative h-[500px] overflow-auto">
+        <TableHeader>
+          <TableRow class="sticky top-0 z-10 border-b bg-background hover:bg-background">
+            <TableHead
+              class="w-[50px]"
+              v-if="permissionNames.includes('acceptance.delete') && filters.viewType === 'rejections'"
+            >
+              <div class="flex items-center justify-center">
+                <input
+                  type="checkbox"
+                  @change="toggleSelectAll"
+                  :checked="isAllSelected"
+                  class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                />
               </div>
+            </TableHead>
 
-              <div class="flex flex-wrap">
+            <TableHead v-if="isSuperAdmin">Company Name</TableHead>
+
+            <TableHead
+  v-for="col in visibleColumns"
+  :key="col"
+  class="cursor-pointer"
+  @click="sortBy(col)"
+
+            >
+              <div class="flex items-center">
+                <div>{{ formatColumnName(col) }}</div>
+                <!-- Sorting icons (keep existing) -->
+              </div>
+            </TableHead>
+
+            <TableHead
+              v-if="
+                (permissionNames.includes('acceptance.update') ||
+                permissionNames.includes('acceptance.delete')) &&
+                filters.viewType === 'rejections'
+              "
+            >
+              Actions
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+
+        <TableBody>
+          <TableRow v-if="filteredData.length === 0">
+            <TableCell
+              :colspan="getColspan()"
+              class="py-8 text-center text-primary font-medium"
+            >
+              No {{ filters.viewType }} found matching your criteria
+            </TableCell>
+          </TableRow>
+
+          <TableRow
+            v-for="item in filteredData"
+            :key="item.id"
+            class="hover:bg-muted/50"
+          >
+            <TableCell
+              class="text-center"
+              v-if="permissionNames.includes('acceptance.delete') && filters.viewType === 'rejections'"
+            >
+              <input
+                type="checkbox"
+                :value="item.id"
+                v-model="selectedRejections"
+                class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+              />
+            </TableCell>
+
+            <TableCell v-if="isSuperAdmin">{{ item.tenant?.name || "—" }}</TableCell>
+
+           <TableCell v-for="col in visibleColumns" :key="col" class="whitespace-nowrap">
+              <template v-if="col === 'date'">
+                {{ formatDate(item.date) }}
+              </template>
+              
+              <!-- Rejection specific fields -->
+              <template v-else-if="col === 'rejectiontype' && filters.viewType === 'rejections'">
+                <span class="capitalize">{{ item.type }}</span>
+              </template>
+              
+              <!-- Acceptance specific fields -->
+              <template v-else-if="col === 'acceptancetype' && filters.viewType === 'acceptance'">
+                <span class="capitalize">{{ item.type }}</span>
+              </template>
+              
+              <template v-else-if="col === 'on_time_status'">
+                <span :class="{
+                  'text-green-600': item.on_time_status === 'on_time',
+                  'text-yellow-600': item.on_time_status === 'late',
+                  'text-blue-600': item.on_time_status === 'early',
+                  'text-red-600': item.on_time_status === 'missed'
+                }">
+                  {{ item.on_time_status?.replace('_', ' ') || '—' }}
+                </span>
+              </template>
+              
+              <template v-else-if="col === 'performance_score'">
+                {{ item.performance_score != null ? item.performance_score + '%' : '—' }}
+              </template>
+              
+              <template v-else-if="col === 'driver_rating'">
+                {{ item.driver_rating != null ? item.driver_rating + '/5' : '—' }}
+              </template>
+              
+              <template v-else-if="col === 'destination_arrival_at'">
+                {{ item.destination_arrival_at ? formatDate(item.destination_arrival_at) : '—' }}
+              </template>
+              
+              <template v-else-if="col === 'accepted_at'">
+                {{ item.accepted_at ? formatDate(item.accepted_at) : '—' }}
+              </template>
+              
+              <!-- Rejection specific fields (keep existing) -->
+              <template v-else-if="col === 'advanced_block_id' && filters.viewType === 'rejections'">
+                {{ item.advanced_block_id ?? "—" }}
+              </template>
+              
+              <template v-else-if="col === 'impacted_blocks' && filters.viewType === 'rejections'">
+                {{ item.impacted_blocks ?? "—" }}
+              </template>
+              
+              <template v-else-if="col === 'rejected_at' && filters.viewType === 'rejections'">
+                {{ item.rejected_at ? formatDate(item.rejected_at) : "—" }}
+              </template>
+              
+            <template v-else-if="col === 'bucket' && filters.viewType === 'rejections'">
+  {{ item.bucket && item.bucket !== '' ? item.bucket : '—' }}
+</template>
+
+<template v-else-if="col === 'rejection_bucket' && filters.viewType === 'rejections'">
+  {{ item.rejection_bucket && item.rejection_bucket !== '' ? item.rejection_bucket : '—' }}
+</template>
+<template v-else-if="col === 'reason' && filters.viewType === 'rejections'">
+  {{ item.reason || item.raw_reason || '—' }}
+</template>
+              <template v-else-if="col === 'disputed' && filters.viewType === 'rejections'">
+                {{ item.dispute_status ? item.dispute_status.charAt(0).toUpperCase() + item.dispute_status.slice(1) : "None" }}
+              </template>
+              
+              <template v-else-if="col === 'drivercontrollable' && filters.viewType === 'rejections'">
+                {{ item.driver_controllable === null ? "N/A" : item.driver_controllable ? "Yes" : "No" }}
+              </template>
+              
+              <template v-else-if="col === 'carrier_controllable' && filters.viewType === 'rejections'">
+                {{ item.carrier_controllable ? "Yes" : "No" }}
+              </template>
+              
+              <template v-else-if="col === 'penalty' && filters.viewType === 'rejections'">
+                {{ item.penalty != null ? item.penalty : "—" }}
+              </template>
+              
+              <!-- Shared fields -->
+              <template v-else-if="col === 'drivername'">
+                {{ item.driver_name || "N/A" }}
+              </template>
+              
+              <template v-else-if="col === 'block_id'">
+                {{ item.block_id ?? "—" }}
+              </template>
+              
+              <template v-else-if="col === 'block_start_at'">
+                {{ item.block_start_at ? formatDate(item.block_start_at) : "—" }}
+              </template>
+              
+              <template v-else-if="col === 'block_end_at'">
+                {{ item.block_end_at ? formatDate(item.block_end_at) : "—" }}
+              </template>
+              
+              <template v-else-if="col === 'load_id'">
+                {{ item.load_id ?? "—" }}
+              </template>
+              
+              <template v-else-if="col === 'origin_yard_arrival_at'">
+                {{ item.origin_yard_arrival_at ? formatDate(item.origin_yard_arrival_at) : "—" }}
+              </template>
+              
+              <!-- Fallback -->
+              <template v-else>
+                {{ item[col] ?? "—" }}
+              </template>
+            </TableCell>
+
+            <TableCell
+              v-if="
+                (permissionNames.includes('acceptance.delete') ||
+                permissionNames.includes('acceptance.update')) &&
+                filters.viewType === 'rejections'
+              "
+            >
+              <div class="flex space-x-2">
                 <Button
-                  v-for="link in rejections.links"
-                  :key="link.label"
-                  @click="visitPage(link.url)"
-                  :disabled="!link.url"
-                  variant="ghost"
                   size="sm"
-                  class="mx-1"
-                  :class="{ 'border-primary bg-primary/10 text-primary': link.active }"
+                  @click="openForm(item)"
+                  variant="warning"
+                  v-if="permissionNames.includes('acceptance.update')"
                 >
-                  <span v-html="link.label"></span>
+                  <Icon name="pencil" class="mr-1 h-4 w-4" />
+                  Edit
+                </Button>
+
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  @click="confirmDeleteRejection(item.id)"
+                  v-if="permissionNames.includes('acceptance.delete')"
+                >
+                  <Icon name="trash" class="mr-1 h-4 w-4" />
+                  Delete
                 </Button>
               </div>
-            </div>
-          </div>
+            </TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+    </div>
+
+         <!-- paginate -->
+<div class="border-t bg-muted/20 px-4 py-3" v-if="currentData?.links">
+  <div class="flex flex-col items-center justify-between gap-2 sm:flex-row">
+    <div class="flex items-center gap-4 text-sm text-muted-foreground">
+      <span
+        >Showing {{ filteredData.length }} of
+        {{ currentData.total || currentData.data?.length || 0 }} entries</span
+      >
+
+      <div
+        class="flex w-full flex-col items-center gap-2 sm:w-auto sm:flex-row sm:gap-4"
+      >
+        <span class="text-sm">Show:</span>
+        <select
+          v-model="perPage"
+          @change="changePerPage"
+          class="h-8 rounded-md border border-input bg-background px-2 py-1 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+        >
+          <option v-for="size in [10, 25, 50, 100]" :key="size" :value="size">
+            {{ size }}
+          </option>
+        </select>
+      </div>
+    </div>
+
+    <div class="flex flex-wrap">
+      <Button
+        v-for="link in currentData.links"
+        :key="link.label"
+        @click="visitPage(link.url)"
+        :disabled="!link.url"
+        variant="ghost"
+        size="sm"
+        class="mx-1"
+        :class="{ 'border-primary bg-primary/10 text-primary': link.active }"
+      >
+        <span v-html="link.label"></span>
+      </Button>
+    </div>
+  </div>
+</div>
         </CardContent>
       </Card>
 
@@ -867,330 +1002,423 @@
       </DialogContent>
     </Dialog>
 
-    <!-- Import Validation Modal -->
-    <Dialog v-model:open="showImportModal">
-      <DialogContent
-        class="max-w-[95vw] sm:max-w-[90vw] md:max-w-5xl max-h-[90vh] overflow-hidden flex flex-col"
-      >
-        <DialogHeader class="px-4 sm:px-6 border-b pb-3">
-          <div class="flex items-center gap-2">
-            <Icon name="upload" class="h-5 w-5 text-primary" />
-            <DialogTitle class="text-lg sm:text-xl font-semibold">
-              Import Rejections
-            </DialogTitle>
-          </div>
-          <DialogDescription class="text-xs sm:text-sm mt-1 text-muted-foreground">
-            Upload a CSV file to import rejections. The file will be validated before
-            import.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div class="flex-1 overflow-y-auto px-4 sm:px-6 py-4">
-          <!-- Step 1: File Upload -->
-          <div v-if="!importValidationResults">
-            <div class="space-y-4">
-              <!-- ✅ Dropzone -->
-              <div
-                class="flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-8 bg-muted/20 transition-colors"
-                :class="{
-                  'border-primary bg-primary/5': isDragging,
-                  'opacity-60 pointer-events-none': isValidating,
-                }"
-                @dragenter.prevent="onDragEnter"
-                @dragover.prevent="onDragOver"
-                @dragleave.prevent="onDragLeave"
-                @drop.prevent="onDrop"
-              >
-                <Icon
-                  name="file-spreadsheet"
-                  class="h-12 w-12 text-muted-foreground mb-3"
-                />
-
-                <div class="text-center">
-                  <div class="text-sm font-medium">
-                    <span class="text-primary">Drag & drop</span> your CSV here
-                  </div>
-                  <p class="text-xs text-muted-foreground mt-1">or</p>
-                </div>
-
-                <label class="cursor-pointer mt-3">
-                  <span class="text-sm font-medium text-primary hover:underline">
-                    Choose CSV file
-                  </span>
-                  <input
-                    ref="importFileInput"
-                    type="file"
-                    class="hidden"
-                    @change="onImportInputChange"
-                    accept=".csv,text/csv"
-                    :disabled="isValidating"
-                  />
-                </label>
-
-                <p class="text-xs text-muted-foreground mt-2">CSV only</p>
-
-                <div v-if="isDragging" class="mt-3 text-xs text-primary font-medium">
-                  Drop file to validate
-                </div>
-              </div>
-
-              <!-- ✅ Template Download (kept) -->
-              <div class="flex items-center gap-2 text-sm text-muted-foreground">
-                <Icon name="info" class="h-4 w-4" />
-                <a :href="templateUrl" download class="text-primary hover:underline">
-                  Download CSV Template
-                </a>
-              </div>
-
-              <div v-if="isValidating" class="flex items-center justify-center gap-2 p-4">
-                <div
-                  class="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"
-                ></div>
-                <span class="text-sm text-muted-foreground">Validating CSV file...</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Step 2: Validation Results -->
-          <div v-else class="space-y-4">
-            <!-- CSV Headers chips -->
-            <div
-              v-if="importValidationResults.headers?.length"
-              class="rounded-lg border p-3"
-            >
-              <div class="flex items-center justify-between">
-                <div class="text-sm font-semibold">CSV Headers</div>
-                <div class="text-xs text-muted-foreground">
-                  {{ importValidationResults.headers.length }} columns
-                </div>
-              </div>
-              <div class="mt-2 flex flex-wrap gap-2">
-                <span
-                  v-for="h in importValidationResults.headers"
-                  :key="h"
-                  class="rounded-full bg-muted px-2 py-0.5 text-xs"
-                >
-                  {{ h }}
-                </span>
-              </div>
-            </div>
-
-            <!-- Summary Cards -->
-            <div class="grid grid-cols-3 gap-4">
-              <Card class="border-2">
-                <CardContent class="p-4 text-center">
-                  <div class="text-2xl font-bold">
-                    {{ importValidationResults.summary.total }}
-                  </div>
-                  <div class="text-sm text-muted-foreground">Total Rows</div>
-                </CardContent>
-              </Card>
-
-              <Card class="border-2 border-green-500/50 bg-green-50 dark:bg-green-900/10">
-                <CardContent class="p-4 text-center">
-                  <div class="text-2xl font-bold text-green-600">
-                    {{ importValidationResults.summary.valid }}
-                  </div>
-                  <div class="text-sm text-muted-foreground">Valid</div>
-                </CardContent>
-              </Card>
-
-              <Card class="border-2 border-red-500/50 bg-red-50 dark:bg-red-900/10">
-                <CardContent class="p-4 text-center">
-                  <div class="text-2xl font-bold text-red-600">
-                    {{ importValidationResults.summary.invalid }}
-                  </div>
-                  <div class="text-sm text-muted-foreground">Invalid</div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <!-- Header Error -->
-            <Alert v-if="importValidationResults.header_error" variant="destructive">
-              <AlertTitle class="flex items-center gap-2">
-                <Icon name="alert_circle" class="h-5 w-5" />
-                Header Error
-              </AlertTitle>
-              <AlertDescription>
-                {{ importValidationResults.header_error }}
-              </AlertDescription>
-            </Alert>
-
-            <!-- Invalid Rows Details -->
-            <div v-if="importValidationResults.invalid?.length">
-              <div class="flex items-center justify-between mb-3">
-                <h3 class="text-lg font-semibold text-red-600 flex items-center gap-2">
-                  <Icon name="alert-triangle" class="h-5 w-5" />
-                  Validation Errors ({{ importValidationResults.invalid.length }})
-                </h3>
-
-                <Button
-                  @click="downloadErrorReport"
-                  variant="outline"
-                  size="sm"
-                  class="flex items-center gap-2"
-                >
-                  <Icon name="download" class="h-4 w-4" />
-                  Download Error Report
-                </Button>
-              </div>
-
-              <div class="border rounded-lg overflow-hidden">
-                <div class="max-h-96 overflow-y-auto">
-                  <Table>
-                    <TableHeader class="sticky top-0 bg-background">
-                      <TableRow>
-                        <TableHead class="w-20">Row #</TableHead>
-                        <TableHead>Preview</TableHead>
-                        <TableHead>Errors</TableHead>
-                      </TableRow>
-                    </TableHeader>
-
-                    <TableBody>
-                      <TableRow
-                        v-for="row in importValidationResults.invalid"
-                        :key="row.rowNumber"
-                        class="hover:bg-muted/50"
-                      >
-                        <TableCell class="font-medium">{{ row.rowNumber }}</TableCell>
-
-                        <TableCell class="text-sm text-muted-foreground">
-                          <div class="flex flex-wrap gap-x-3 gap-y-1">
-                            <span
-                              v-for="p in row.preview || []"
-                              :key="p.key"
-                              class="whitespace-nowrap"
-                            >
-                              <span class="font-medium text-foreground">
-                                {{ p.label }}:
-                              </span>
-                              {{ p.value }}
-                            </span>
-
-                            <span
-                              v-if="!row.preview?.length"
-                              class="italic text-muted-foreground"
-                            >
-                              —
-                            </span>
-                          </div>
-                        </TableCell>
-
-                        <TableCell>
-                          <div class="space-y-1">
-                            <div
-                              v-for="(error, idx) in row.errors || []"
-                              :key="idx"
-                              class="text-xs text-red-600 flex items-start gap-1"
-                            >
-                              <Icon
-                                name="x-circle"
-                                class="h-3 w-3 mt-0.5 flex-shrink-0"
-                              />
-                              <span>{{ error }}</span>
-                            </div>
-                            <div
-                              v-if="!row.errors?.length"
-                              class="text-xs text-muted-foreground"
-                            >
-                              —
-                            </div>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
-                </div>
-              </div>
-            </div>
-
-            <!-- Valid Rows Preview -->
-            <div v-if="importValidationResults.valid?.length">
-              <h3
-                class="text-lg font-semibold text-green-600 flex items-center gap-2 mb-3"
-              >
-                <Icon name="check-circle" class="h-5 w-5" />
-                Valid Rows ({{ importValidationResults.valid.length }})
-              </h3>
-
-              <div class="text-sm text-muted-foreground mb-2">
-                Showing first 5 valid rows
-              </div>
-
-              <div class="border rounded-lg overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Row #</TableHead>
-                      <TableHead>Preview</TableHead>
-                    </TableRow>
-                  </TableHeader>
-
-                  <TableBody>
-                    <TableRow
-                      v-for="row in importValidationResults.valid.slice(0, 5)"
-                      :key="row.rowNumber"
-                    >
-                      <TableCell class="font-medium">{{ row.rowNumber }}</TableCell>
-
-                      <TableCell class="text-sm">
-                        <div class="flex flex-wrap gap-x-3 gap-y-1">
-                          <span
-                            v-for="p in row.preview || []"
-                            :key="p.key"
-                            class="whitespace-nowrap"
-                          >
-                            <span class="font-medium">{{ p.label }}:</span>
-                            {{ p.value }}
-                          </span>
-
-                          <span
-                            v-if="!row.preview?.length"
-                            class="italic text-muted-foreground"
-                          >
-                            —
-                          </span>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Modal Footer -->
-        <div class="border-t p-4 flex justify-end gap-3">
-          <Button @click="closeImportModal" variant="outline" :disabled="isImporting">
-            Close
-          </Button>
-
-          <Button
-            v-if="importValidationResults && importValidationResults.summary.valid > 0"
-            @click="confirmImport"
-            variant="default"
-            :disabled="
-              isImporting ||
-              importValidationResults.summary.invalid > 0 ||
-              Boolean(importValidationResults.header_error)
-            "
-            class="flex items-center gap-2"
+   <!-- Import Validation Modal -->
+<Dialog v-model:open="showImportModal">
+  <DialogContent
+    class="max-w-[95vw] sm:max-w-[90vw] md:max-w-5xl max-h-[90vh] overflow-hidden flex flex-col"
+  >
+    <DialogHeader class="px-4 sm:px-6 border-b pb-3">
+      <div class="flex items-center gap-2">
+        <Icon name="upload" class="h-5 w-5 text-primary" />
+        <DialogTitle class="text-lg sm:text-xl font-semibold">
+          Import Rejections
+        </DialogTitle>
+      </div>
+      <DialogDescription class="text-xs sm:text-sm mt-1 text-muted-foreground">
+        Upload a CSV file to import rejections. The file will be validated before import.
+      </DialogDescription>
+      
+      <!-- Form for file upload -->
+      <form id="importForm" enctype="multipart/form-data">
+        <!-- SUPERADMIN TENANT SELECTOR -->
+        <div v-if="isSuperAdmin" class="mb-4">
+          <Label for="tenant-selector" class="text-sm font-medium text-gray-700">Select Tenant:</Label>
+          <select
+            id="tenant-select"
+            v-model="selectedTenantId"
+            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            required
           >
-            <div
-              v-if="isImporting"
-              class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"
-            ></div>
-            <Icon v-else name="check" class="h-4 w-4" />
-            {{
-              isImporting
-                ? "Importing..."
-                : `Import ${importValidationResults.summary.valid} Rows`
-            }}
-          </Button>
+            <option value="" disabled selected>Choose tenant...</option>
+            <option v-for="tenant in tenants" :key="tenant.id" :value="tenant.id">
+              {{ tenant.name }} (ID: {{ tenant.id }})
+            </option>
+          </select>
         </div>
-      </DialogContent>
-    </Dialog>
+      </form>
+    </DialogHeader>
+
+    <div class="flex-1 overflow-y-auto px-4 sm:px-6 py-4">
+      <!-- Step 1: File Upload -->
+      <div v-if="!importValidationResults">
+        <div class="space-y-6">
+          <!-- MAIN FILE - Rejection CSV -->
+          <div class="rounded-lg border p-4 bg-muted/5">
+            <h3 class="text-sm font-medium mb-3 flex items-center gap-2">
+              <Icon name="file-spreadsheet" class="h-4 w-4 text-primary" />
+              Rejection CSV File <span class="text-xs text-red-500">* Required</span>
+            </h3>
+            
+            <!-- Dropzone -->
+            <div
+              class="flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-8 bg-muted/20 transition-colors"
+              :class="{
+                'border-primary bg-primary/5': isDragging,
+                'opacity-60 pointer-events-none': isValidating,
+              }"
+              @dragenter.prevent="onDragEnter"
+              @dragover.prevent="onDragOver"
+              @dragleave.prevent="onDragLeave"
+              @drop.prevent="onDrop"
+            >
+              <Icon name="file-spreadsheet" class="h-12 w-12 text-muted-foreground mb-3" />
+
+              <div class="text-center">
+                <div class="text-sm font-medium">
+                  <span class="text-primary">Drag & drop</span> your CSV here
+                </div>
+                <p class="text-xs text-muted-foreground mt-1">or</p>
+              </div>
+
+              <label class="cursor-pointer mt-3">
+                <span class="text-sm font-medium text-primary hover:underline">
+                  Choose CSV file
+                </span>
+                <input
+                  ref="importFileInput"
+                  type="file"
+                  class="hidden"
+                  @change="onImportInputChange"
+                  accept=".csv,text/csv"
+                  :disabled="isValidating"
+                />
+              </label>
+
+              <p class="text-xs text-muted-foreground mt-2">CSV only</p>
+
+              <div v-if="isDragging" class="mt-3 text-xs text-primary font-medium">
+                Drop file to validate
+              </div>
+            </div>
+
+            <!-- Template Download -->
+            <div class="flex items-center gap-2 text-sm text-muted-foreground mt-3">
+              <Icon name="info" class="h-4 w-4" />
+              <a :href="templateUrl" download class="text-primary hover:underline">
+                Download CSV Template
+              </a>
+            </div>
+          </div>
+
+          <!-- OPTIONAL TRIPS FILE FOR DRIVER MAPPING -->
+          <div class="rounded-lg border p-4 bg-muted/10">
+            <div class="flex items-center gap-2 mb-2">
+              <Icon name="users" class="h-4 w-4 text-muted-foreground" />
+              <h3 class="text-sm font-medium">Driver Mapping File (Optional)</h3>
+            </div>
+            
+            <p class="text-xs text-muted-foreground mb-3">
+              Upload a Trips CSV file to automatically map driver names to loads.
+              The system will trace driver assignments sequentially by Operator ID.
+            </p>
+
+            <!-- Dropzone for trips file -->
+            <div
+              class="flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-6 bg-muted/20 transition-colors"
+              :class="{ 
+                'border-primary bg-primary/5': isTripsDragging,
+                'opacity-60 pointer-events-none': isValidating 
+              }"
+              @dragenter.prevent="onTripsDragEnter"
+              @dragover.prevent="onTripsDragOver"
+              @dragleave.prevent="onTripsDragLeave"
+              @drop.prevent="onTripsDrop"
+            >
+              <Icon name="file-text" class="h-8 w-8 text-muted-foreground mb-2" />
+
+              <div class="text-center">
+                <div class="text-xs">
+                  <span class="text-primary">Drag & drop</span> trips CSV here
+                </div>
+                <p class="text-xs text-muted-foreground mt-1">or</p>
+              </div>
+
+              <label class="cursor-pointer mt-2">
+                <span class="text-xs font-medium text-primary hover:underline">
+                  Choose Trips CSV file
+                </span>
+                <input
+                  ref="tripsFileInput"
+                  type="file"
+                  class="hidden"
+                  @change="onTripsInputChange"
+                  accept=".csv,text/csv"
+                  :disabled="isValidating"
+                />
+              </label>
+
+              <p class="text-xs text-muted-foreground mt-2">CSV only</p>
+            </div>
+
+            <!-- Selected file indicator -->
+            <div v-if="selectedTripsFile" class="mt-2 flex items-center gap-2 text-xs bg-green-50 dark:bg-green-900/10 p-2 rounded">
+              <Icon name="check-circle" class="h-3 w-3 text-green-600 flex-shrink-0" />
+              <span class="truncate flex-1">{{ selectedTripsFile.name }}</span>
+              <button @click="clearTripsFile" class="text-red-500 hover:text-red-700 p-1">
+                <Icon name="x" class="h-3 w-3" />
+              </button>
+            </div>
+          </div>
+
+          <div v-if="isValidating" class="flex items-center justify-center gap-2 p-4">
+            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+            <span class="text-sm text-muted-foreground">Validating CSV file...</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: Validation Results -->
+      <div v-else class="space-y-4">
+        <!-- CSV Headers chips -->
+        <div
+          v-if="importValidationResults.headers?.length"
+          class="rounded-lg border p-3"
+        >
+          <div class="flex items-center justify-between">
+            <div class="text-sm font-semibold">CSV Headers</div>
+            <div class="text-xs text-muted-foreground">
+              {{ importValidationResults.headers.length }} columns
+            </div>
+          </div>
+          <div class="mt-2 flex flex-wrap gap-2">
+            <span
+              v-for="h in importValidationResults.headers"
+              :key="h"
+              class="rounded-full bg-muted px-2 py-0.5 text-xs"
+            >
+              {{ h }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-3 gap-4">
+          <Card class="border-2">
+            <CardContent class="p-4 text-center">
+              <div class="text-2xl font-bold">
+                {{ importValidationResults.summary.total }}
+              </div>
+              <div class="text-sm text-muted-foreground">Total Rows</div>
+            </CardContent>
+          </Card>
+
+          <Card class="border-2 border-green-500/50 bg-green-50 dark:bg-green-900/10">
+            <CardContent class="p-4 text-center">
+              <div class="text-2xl font-bold text-green-600">
+                {{ importValidationResults.summary.valid }}
+              </div>
+              <div class="text-sm text-muted-foreground">Valid</div>
+            </CardContent>
+          </Card>
+
+          <Card class="border-2 border-red-500/50 bg-red-50 dark:bg-red-900/10">
+            <CardContent class="p-4 text-center">
+              <div class="text-2xl font-bold text-red-600">
+                {{ importValidationResults.summary.invalid }}
+              </div>
+              <div class="text-sm text-muted-foreground">Invalid</div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <!-- Header Error -->
+        <Alert v-if="importValidationResults.header_error" variant="destructive">
+          <AlertTitle class="flex items-center gap-2">
+            <Icon name="alert_circle" class="h-5 w-5" />
+            Header Error
+          </AlertTitle>
+          <AlertDescription>
+            {{ importValidationResults.header_error }}
+          </AlertDescription>
+        </Alert>
+
+        <!-- Trips File Stats (if available) -->
+        <div v-if="importValidationResults.trips_stats" class="rounded-lg border p-3 bg-blue-50 dark:bg-blue-900/10">
+          <div class="flex items-center gap-2 mb-2">
+            <Icon name="users" class="h-4 w-4 text-blue-600" />
+            <h4 class="text-sm font-semibold">Trips File Stats</h4>
+          </div>
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <div>Total rows: {{ importValidationResults.trips_stats.total_rows }}</div>
+            <div>Unique loads mapped: {{ importValidationResults.trips_stats.mapped_loads }}</div>
+          </div>
+        </div>
+
+        <!-- Invalid Rows Details -->
+        <div v-if="importValidationResults.invalid?.length">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-lg font-semibold text-red-600 flex items-center gap-2">
+              <Icon name="alert-triangle" class="h-5 w-5" />
+              Validation Errors ({{ importValidationResults.invalid.length }})
+            </h3>
+
+            <Button
+              @click="downloadErrorReport"
+              variant="outline"
+              size="sm"
+              class="flex items-center gap-2"
+            >
+              <Icon name="download" class="h-4 w-4" />
+              Download Error Report
+            </Button>
+          </div>
+
+          <div class="border rounded-lg overflow-hidden">
+            <div class="max-h-96 overflow-y-auto">
+              <Table>
+                <TableHeader class="sticky top-0 bg-background">
+                  <TableRow>
+                    <TableHead class="w-20">Row #</TableHead>
+                    <TableHead>Preview</TableHead>
+                    <TableHead>Errors</TableHead>
+                  </TableRow>
+                </TableHeader>
+
+                <TableBody>
+                  <TableRow
+                    v-for="row in importValidationResults.invalid"
+                    :key="row.rowNumber"
+                    class="hover:bg-muted/50"
+                  >
+                    <TableCell class="font-medium">{{ row.rowNumber }}</TableCell>
+
+                    <TableCell class="text-sm text-muted-foreground">
+                      <div class="flex flex-wrap gap-x-3 gap-y-1">
+                        <span
+                          v-for="p in row.preview || []"
+                          :key="p.key"
+                          class="whitespace-nowrap"
+                        >
+                          <span class="font-medium text-foreground">
+                            {{ p.label }}:
+                          </span>
+                          {{ p.value }}
+                        </span>
+
+                        <span
+                          v-if="!row.preview?.length"
+                          class="italic text-muted-foreground"
+                        >
+                          —
+                        </span>
+                      </div>
+                    </TableCell>
+
+                    <TableCell>
+                      <div class="space-y-1">
+                        <div
+                          v-for="(error, idx) in row.errors || []"
+                          :key="idx"
+                          class="text-xs text-red-600 flex items-start gap-1"
+                        >
+                          <Icon
+                            name="x-circle"
+                            class="h-3 w-3 mt-0.5 flex-shrink-0"
+                          />
+                          <span>{{ error }}</span>
+                        </div>
+                        <div
+                          v-if="!row.errors?.length"
+                          class="text-xs text-muted-foreground"
+                        >
+                          —
+                        </div>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Valid Rows Preview -->
+        <div v-if="importValidationResults.valid?.length">
+          <h3
+            class="text-lg font-semibold text-green-600 flex items-center gap-2 mb-3"
+          >
+            <Icon name="check-circle" class="h-5 w-5" />
+            Valid Rows ({{ importValidationResults.valid.length }})
+          </h3>
+
+          <div class="text-sm text-muted-foreground mb-2">
+            Showing first 5 valid rows
+          </div>
+
+          <div class="border rounded-lg overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Row #</TableHead>
+                  <TableHead>Preview</TableHead>
+                </TableRow>
+              </TableHeader>
+
+              <TableBody>
+                <TableRow
+                  v-for="row in importValidationResults.valid.slice(0, 5)"
+                  :key="row.rowNumber"
+                >
+                  <TableCell class="font-medium">{{ row.rowNumber }}</TableCell>
+
+                  <TableCell class="text-sm">
+                    <div class="flex flex-wrap gap-x-3 gap-y-1">
+                      <span
+                        v-for="p in row.preview || []"
+                        :key="p.key"
+                        class="whitespace-nowrap"
+                      >
+                        <span class="font-medium">{{ p.label }}:</span>
+                        {{ p.value }}
+                      </span>
+
+                      <span
+                        v-if="!row.preview?.length"
+                        class="italic text-muted-foreground"
+                      >
+                        —
+                      </span>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Footer -->
+    <div class="border-t p-4 flex justify-end gap-3">
+      <Button @click="closeImportModal" variant="outline" :disabled="isImporting">
+        Close
+      </Button>
+
+      <Button
+        v-if="importValidationResults && importValidationResults.summary.valid > 0"
+        @click="confirmImport"
+        variant="default"
+        :disabled="
+          isImporting ||
+          importValidationResults.summary.invalid > 0 ||
+          Boolean(importValidationResults.header_error)
+        "
+        class="flex items-center gap-2"
+      >
+        <div
+          v-if="isImporting"
+          class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"
+        ></div>
+        <Icon v-else name="check" class="h-4 w-4" />
+        {{
+          isImporting
+            ? "Importing..."
+            : `Import ${importValidationResults.summary.valid} Rows`
+        }}
+      </Button>
+    </div>
+  </DialogContent>
+</Dialog>
   </AppLayout>
 </template>
 
@@ -1230,6 +1458,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+   SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+ 
+} from '@/components/ui/select'  // Your shadcn path
 
 import AppLayout from "@/layouts/AppLayout.vue";
 
@@ -1239,6 +1475,7 @@ const props = defineProps({
     default: () => ({ data: [], links: [] }),
   },
   tenantSlug: { type: String, default: null },
+  tenantId: { type: [String, Number], default: null }, // ✅ Add this line
   rejection_reason_codes: Array,
   tenants: { type: Array, default: () => [] },
   isSuperAdmin: { type: Boolean, default: false },
@@ -1259,12 +1496,126 @@ const props = defineProps({
       rejectionType: "",
       reasonCode: "",
       rejectionCategory: "",
-      disputed: "",
-      driverControllable: "",
+      disputeStatus: "",     // ✅ Fixed
+      controllable: [],      // ✅ Fixed - array
+      viewType: "rejections", // Add this
+
     }),
   },
+    acceptances: {
+    type: Object,
+    default: () => ({ data: [], links: [] }),
+  },
+  
+  // Add acceptance metrics
+  acceptanceMetrics: {
+    type: Object,
+    default: null,
+  },
+  // Add top drivers for acceptance view
+  topDrivers: {
+    type: Array,
+    default: () => [],
+  },
   permissions: Array,
+
 });
+console.log('Props received:', {
+  viewType: props.filters?.viewType,
+  hasAcceptances: !!props.acceptances,
+  hasRejections: !!props.rejections,
+  filters: props.filters
+});
+
+
+const tripsFileInput = ref(null);
+
+const effectiveTenantId = computed(() => {
+  if (props.isSuperAdmin) {
+    return selectedTenantId.value
+  }
+  return props.tenantId
+})
+
+/** Rejection columns */
+const rejectionColumns = [
+  "date",
+  "drivername",
+  "rejectiontype",
+  "advanced_block_id",
+  "impacted_blocks",
+  "block_id",
+  "block_start_at",
+  "block_end_at",
+  "rejected_at",
+  "bucket",
+  "load_id",
+  "origin_yard_arrival_at",
+  "rejection_bucket",
+  "reason",  // ← ADD THIS LINE
+  "disputed",
+  "drivercontrollable",
+  "carrier_controllable",
+  "penalty",
+];
+
+/** Acceptance columns */
+const acceptanceColumns = [
+  "date",
+  "drivername",
+  "acceptancetype",
+  "block_id",
+  "block_start_at",
+  "block_end_at",
+  "accepted_at",
+  "load_id",
+  "origin_yard_arrival_at",
+  "destination_arrival_at",
+  "on_time_status",
+  "performance_score",
+  "driver_rating",
+];
+
+/** Computed columns based on view type */
+const tableColumns = computed(() => {
+  return filters.value.viewType === 'rejections' 
+    ? rejectionColumns 
+    : acceptanceColumns;
+});
+
+// Determine which columns actually have data
+const visibleColumns = computed(() => {
+  const data = filteredData.value;
+  if (data.length === 0) return tableColumns.value;
+  
+  // Always show these core columns even if empty
+  const alwaysShow = [
+    'date', 
+    'drivername', 
+    'rejectiontype', 
+    'disputed', 
+    'drivercontrollable', 
+    'carrier_controllable', 
+    'penalty'
+  ];
+  
+  return tableColumns.value.filter(col => {
+    // Always show core columns
+    if (alwaysShow.includes(col)) return true;
+    
+    // Check if any row has data for this column
+    return data.some(item => {
+      const value = item[col];
+      // Check for null, undefined, empty string, or placeholder
+      return value !== null && 
+             value !== undefined && 
+             value !== '' && 
+             value !== '—' && 
+             value !== 'N/A';
+    });
+  });
+});
+
 
 const page = usePage();
 
@@ -1279,6 +1630,10 @@ const importFileInput = ref(null);
 const isDragging = ref(false);
 let dragDepth = 0;
 
+
+const selectedTenantId = ref(null)
+const tenants = props.tenants || []  // From controller
+const isSuperAdmin = props.isSuperAdmin
 /** Prevent browser from opening the file if dropped outside the dropzone */
 onMounted(() => {
   const prevent = (e) => e.preventDefault();
@@ -1312,6 +1667,8 @@ const weekNumberText = computed(() => {
 
   return "";
 });
+
+
 
 /** Breadcrumbs */
 const breadcrumbs = [
@@ -1351,23 +1708,67 @@ const codeForm = ref({ reason_code: "", description: "" });
 const codeDeleteConfirm = ref(false);
 const codeToDelete = ref(null);
 
-/** Columns */
-const tableColumns = [
-  "date",
-  "driver_name",
-  "rejection_type",
-  "reason_code",
-  "rejection_category",
-  "disputed",
-  "driver_controllable",
-];
+// /** Columns */
+// const tableColumns = [
+//   "date",
+//   "drivername",
+//   "rejectiontype",
+
+//   // Advanced-only fields
+//   "advanced_block_id",
+//   "impacted_blocks",
+
+//   // Block-only fields
+//   "block_id",
+//   "block_start_at",
+//   "block_end_at",
+//   "rejected_at",
+//   "bucket",
+
+//   // Load-only fields
+//   "load_id",
+//   "origin_yard_arrival_at",
+//   "rejection_bucket",
+
+//   // Shared flags
+//   "disputed",
+//   "drivercontrollable",
+//   "carrier_controllable",
+//   "penalty",
+// ];
 
 /** Sorting */
 const sortColumn = ref("date");
 const sortDirection = ref("desc");
 
 /** Filters */
-const filters = ref({ ...props.filters });
+const filters = ref({ 
+  search: "",
+  rejectionType: "",
+  reasonCode: "",
+  rejectionCategory: "",
+  disputeStatus: "",  // Changed from 'disputed'
+  controllable: [],  // Changed from string to array
+  viewType: 'rejections',
+  ...props.filters ,
+});
+console.log('Initialized filters:', filters.value);
+// Make sure to convert props.filters.controllable to array if it exists
+if (props.filters?.controllable && !Array.isArray(props.filters.controllable)) {
+  filters.value.controllable = props.filters.controllable ? [props.filters.controllable] : [];
+}
+
+// Add a watcher to sync with props when they change
+watch(() => props.filters, (newFilters) => {
+  if (newFilters && Object.keys(newFilters).length > 0) {
+    console.log('Syncing filters with props:', newFilters);
+    filters.value = {
+      ...filters.value,
+      ...newFilters
+    };
+  }
+}, { deep: true, immediate: true });
+
 
 watch(
   () => filters.value.rejectionType,
@@ -1398,10 +1799,47 @@ watch(
   }
 );
 
-/** Filtered & sorted */
-const filteredRejections = computed(() => {
-  let result = [...props.rejections.data];
+// /** Filtered & sorted */
+// const filteredRejections = computed(() => {
+//   let result = [...props.rejections.data];
 
+//   result.sort((a, b) => {
+//     let valA = a[sortColumn.value];
+//     let valB = b[sortColumn.value];
+
+//     if (sortColumn.value === "reason_code") {
+//       valA = a.reason_code?.reason_code || "";
+//       valB = b.reason_code?.reason_code || "";
+//     }
+
+//     if (valA === null) return 1;
+//     if (valB === null) return -1;
+
+//     if (typeof valA === "string") {
+//       valA = valA.toLowerCase();
+//       valB = valB.toLowerCase();
+//     }
+
+//     if (valA < valB) return sortDirection.value === "asc" ? -1 : 1;
+//     if (valA > valB) return sortDirection.value === "asc" ? 1 : -1;
+//     return 0;
+//   });
+
+//   return result;
+// });
+
+// Add these with your other refs (around line 400-500)
+const selectedTripsFile = ref(null);
+const isTripsDragging = ref(false);
+let tripsDragDepth = 0;
+/** Filtered & sorted data based on view type */
+const filteredData = computed(() => {
+  // Choose the right data source based on view type
+  let result = filters.value.viewType === 'rejections' 
+    ? [...(props.rejections?.data || [])]
+    : [...(props.acceptances?.data || [])];
+
+  // Apply sorting
   result.sort((a, b) => {
     let valA = a[sortColumn.value];
     let valB = b[sortColumn.value];
@@ -1426,6 +1864,65 @@ const filteredRejections = computed(() => {
 
   return result;
 });
+/** Trips file handlers */
+function onTripsInputChange(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  
+  validateTripsFile(file);
+  event.target.value = ""; // reset
+}
+
+function validateTripsFile(file) {
+  const isCsv = file.type === "text/csv" || file.name.toLowerCase().endsWith(".csv");
+  if (!isCsv) {
+    errorMessage.value = "Trips file must be a CSV file.";
+    setTimeout(() => (errorMessage.value = ""), 4000);
+    return;
+  }
+  
+  selectedTripsFile.value = file;
+  successMessage.value = `Trips file selected: ${file.name}`;
+  setTimeout(() => (successMessage.value = ""), 3000);
+}
+
+function onTripsDragEnter() {
+  tripsDragDepth += 1;
+  isTripsDragging.value = true;
+}
+
+function onTripsDragOver() {
+  isTripsDragging.value = true;
+}
+
+function onTripsDragLeave() {
+  tripsDragDepth -= 1;
+  if (tripsDragDepth <= 0) {
+    tripsDragDepth = 0;
+    isTripsDragging.value = false;
+  }
+}
+
+function onTripsDrop(e) {
+  tripsDragDepth = 0;
+  isTripsDragging.value = false;
+  
+  const file = e.dataTransfer?.files?.[0];
+  if (!file) return;
+  
+  validateTripsFile(file);
+}
+
+function clearTripsFile() {
+  selectedTripsFile.value = null;
+  if (importFileInput.value) {
+    importFileInput.value.value = "";
+  }
+}
+// Keep filteredRejections for backward compatibility in other parts of the code
+const filteredRejections = computed(() => {
+  return filters.value.viewType === 'rejections' ? filteredData.value : [];
+});
 
 function sortBy(column) {
   if (sortColumn.value === column) {
@@ -1441,12 +1938,48 @@ function applyFilters() {
     ? route("acceptance.index", { tenantSlug: props.tenantSlug })
     : route("acceptance.index.admin");
 
-  router.get(routeName, {
+  // Create params object with all filters
+  const params = {
     ...filters.value,
     perPage: perPage.value,
     dateFilter: activeTab.value,
+    viewType: filters.value.viewType, // Explicitly include viewType
+  };
+  
+  console.log('Applying filters with params:', params);
+  
+  router.get(routeName, params, {
+    preserveState: true,
+    preserveScroll: true,
   });
 }
+
+// Watch for viewType changes to auto-apply filters
+watch(() => filters.value.viewType, () => {
+  applyFilters();
+});
+
+function setViewType(type) {
+  if (filters.value.viewType === type) {
+    console.log('View type already set to:', type);
+    return;
+  }
+  
+  console.log('Changing view type from', filters.value.viewType, 'to', type);
+  filters.value.viewType = type;
+  
+  // Clear rejection-specific filters when switching to acceptance
+ if (type === 'acceptance') {
+  filters.value.rejectionType = '';
+  filters.value.reasonCode = '';
+  filters.value.rejectionCategory = '';
+  filters.value.disputeStatus = '';     // ✅ Fixed
+  filters.value.controllable = [];      // ✅ Fixed - reset to empty array
+}
+  
+  applyFilters();
+}
+
 
 function resetFilters() {
   filters.value = {
@@ -1456,8 +1989,9 @@ function resetFilters() {
     rejectionType: "",
     reasonCode: "",
     rejectionCategory: "",
-    disputed: "",
-    driverControllable: "",
+    disputeStatus: "",  // Changed
+    controllable: [],  // Changed to empty array
+    viewType: filters.value.viewType, // Keep the current view type
   };
   applyFilters();
 }
@@ -1539,6 +2073,55 @@ const saveCode = () => {
   });
 };
 
+/** Controllable dropdown state */
+const showControllableDropdown = ref(false);
+
+// Close dropdown when clicking outside
+onMounted(() => {
+  const handleClickOutside = (e) => {
+    if (showControllableDropdown.value && !e.target.closest('.relative')) {
+      showControllableDropdown.value = false;
+    }
+  };
+  
+  document.addEventListener('click', handleClickOutside);
+  
+  onUnmounted(() => {
+    document.removeEventListener('click', handleClickOutside);
+  });
+});
+
+function toggleControllableDropdown() {
+  showControllableDropdown.value = !showControllableDropdown.value;
+}
+
+function clearControllable() {
+  filters.value.controllable = [];
+}
+
+// Display text for the button
+const getControllableDisplayText = computed(() => {
+  if (!filters.value.controllable || filters.value.controllable.length === 0) {
+    return 'All';
+  }
+  
+  const selected = filters.value.controllable;
+  const labels = {
+    carrier: 'Carrier',
+    driver: 'Driver',
+    none: 'Not',
+    both: 'Both'
+  };
+  
+  if (selected.length === 1) {
+    return labels[selected[0]] || selected[0];
+  }
+  
+  return `${selected.length} selected`;
+});
+
+
+
 const deleteCode = (id) => {
   const form = useForm({});
   const routeName = props.isSuperAdmin
@@ -1590,10 +2173,14 @@ const visitPage = (url) => {
       ...filters.value,
       perPage: perPage.value,
       dateFilter: activeTab.value,
+      viewType: filters.value.viewType,
       page: urlObj.searchParams.get("page") || 1,
+    }, {
+      preserveState: true,
+      preserveScroll: true,
     });
   }
-};
+}
 
 /** Date filter */
 function selectDateFilter(filter) {
@@ -1631,6 +2218,75 @@ function formatDate(dateStr) {
   const [year, month, day] = parts;
   return `${Number(month)}/${Number(day)}/${year}`;
 }
+
+// Format column names nicely
+function formatColumnName(col) {
+  const columnMap = {
+    // Basic fields
+    'date': 'Date',
+    'drivername': 'Driver-name',
+    'rejectiontype': 'Rejection-type',
+    'acceptancetype': 'Acceptance-type',
+    
+    // Advanced fields
+    'advanced_block_id': 'Advanced Block ID',
+    'impacted_blocks': 'Impacted Blocks',
+    
+    // Block fields
+    'block_id': 'Block ID',
+    'block_start_at': 'Block Start',
+    'block_end_at': 'Block End',
+    'rejected_at': 'Rejected At',
+    'bucket': 'Bucket',
+    
+    // Load fields
+    'load_id': 'Load ID',
+    'origin_yard_arrival_at': 'Origin Arrival',
+    'rejection_bucket': 'Rejection Bucket',
+    'reason': 'Reason',
+    'destination_arrival_at': 'Destination Arrival',
+    
+    // Status fields
+    'on_time_status': 'On Time Status',
+    'performance_score': 'Performance',
+    'driver_rating': 'Driver Rating',
+    'accepted_at': 'Accepted At',
+    
+    // Control fields
+    'disputed': 'Disputed',
+    'drivercontrollable': 'Driver-Controllable',
+    'carrier_controllable': 'Carrier Controllable',
+    'penalty': 'Penalty',
+    
+    // Category fields
+    'rejectioncategory': 'Rejection From Start',
+  };
+  
+  // Return mapped name if it exists, otherwise format the original
+  return columnMap[col] || col
+    .replace(/_/g, " ")
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+function getColspan() {
+  let base = visibleColumns.value.length + (isSuperAdmin ? 1 : 0);
+  if (filters.value.viewType === 'rejections' && permissionNames.value.includes('acceptance.delete')) {
+    base += 1; // Checkbox column
+  }
+  if (filters.value.viewType === 'rejections' && 
+      (permissionNames.value.includes('acceptance.delete') || permissionNames.value.includes('acceptance.update'))) {
+    base += 1; // Actions column
+  }
+  return base;
+}
+
+// Get current data source for pagination
+const currentData = computed(() => {
+  return filters.value.viewType === 'rejections' ? props.rejections : props.acceptances;
+});
+
 
 /** Auto-hide success */
 watch(successMessage, (newValue) => {
@@ -1800,6 +2456,8 @@ function onImportInputChange(event) {
   event.target.value = "";
 }
 
+
+
 /** ✅ Import: shared handler (drop + input) */
 function handleImportFile(file) {
   if (!file) return;
@@ -1867,36 +2525,67 @@ function onDrop(e) {
 }
 
 /** Confirm import */
-function confirmImport() {
+/** Confirm import */
+async function confirmImport() {
   if (!importValidationResults.value) return;
   if ((importValidationResults.value.summary?.invalid ?? 0) > 0) return;
   if (importValidationResults.value.header_error) return;
 
+  // Safe tenant_id extraction
+  let tenantId = null
+  if (props.isSuperAdmin) {
+    if (!selectedTenantId.value) {
+      errorMessage.value = "Please select a tenant!";
+      return;
+    }
+    tenantId = selectedTenantId.value
+  } else {
+    tenantId = props.tenantId
+  }
+
+  if (!tenantId) {
+    errorMessage.value = "No tenant available!";
+    return;
+  }
+
   isImporting.value = true;
+
+  // Create FormData with session file + tenant_id + optional trips file
+  const formData = new FormData();
+  formData.append('tenant_id', tenantId.toString());
+  formData.append('format', 'new');  // or detect from session
+  
+  // 🔥 NEW: Append trips file if selected
+  if (selectedTripsFile.value) {
+    formData.append('trips_file', selectedTripsFile.value);
+    console.log('Appending trips file:', selectedTripsFile.value.name);
+  }
 
   const endpoint = props.isSuperAdmin
     ? route("acceptance.confirmImport.admin")
     : route("acceptance.confirmImport", { tenantSlug: props.tenantSlug });
 
-  router.post(
-    endpoint,
-    {},
-    {
+  try {
+    await router.post(endpoint, formData, {
       preserveScroll: true,
+      forceFormData: true,  // CRITICAL for FormData!
       onSuccess: () => {
-        successMessage.value = `Successfully imported ${
-          importValidationResults.value.summary?.valid ?? 0
-        } rejections`;
+        successMessage.value = `Imported ${importValidationResults.value.summary?.valid ?? 0} rejections`;
+        if (selectedTripsFile.value) {
+          successMessage.value += ' with driver mapping';
+        }
         closeImportModal();
       },
-      onError: () => {
-        errorMessage.value = "Failed to import rejections";
+      onError: (errors) => {
+        errorMessage.value = errors.message || "Import failed";
       },
       onFinish: () => {
         isImporting.value = false;
       },
-    }
-  );
+    });
+  } catch (error) {
+    console.error('Import error:', error);
+  }
 }
 
 function downloadErrorReport() {
@@ -1916,9 +2605,18 @@ function closeImportModal() {
   // reset drag UI state
   isDragging.value = false;
   dragDepth = 0;
+  
+  // 🔥 NEW: Clear trips file
+  selectedTripsFile.value = null;
+  isTripsDragging.value = false;
+  tripsDragDepth = 0;
 
   // clear file input if possible
   if (importFileInput.value) importFileInput.value.value = "";
+  
+  // clear trips file input if it exists
+  const tripsInput = document.querySelector('input[ref="tripsFileInput"]');
+  if (tripsInput) tripsInput.value = "";
 }
 
 function exportCSV() {
@@ -1973,8 +2671,8 @@ const hasActiveFilters = computed(() => {
     filters.value.rejectionType ||
     filters.value.reasonCode ||
     filters.value.rejectionCategory ||
-    filters.value.disputed ||
-    filters.value.driverControllable
+    filters.value.disputeStatus ||
+    (filters.value.controllable && filters.value.controllable.length > 0)  // Changed
   );
 });
 

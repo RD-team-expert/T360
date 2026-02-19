@@ -1,0 +1,1 @@
+import{c as o}from"./utils-YBPWXdwq.js";import{d as n,L as r,e as t,i as c,b2 as p,u as l}from"./vendor-DMnE7N8V.js";const f=n({__name:"CardContent",props:{class:{}},setup(s){const e=s;return(a,m)=>(t(),r("div",{class:p(l(o)("p-6 pt-0",e.class))},[c(a.$slots,"default")],2))}});export{f as _};
